@@ -37,7 +37,6 @@ const INDICATORS: &[(&str, &str, &str, Severity)] = &[
 
     // Network / exfiltration
     ("InternetOpenUrl",  "STR_NET_FETCH",  "Network fetch API string", Severity::Medium),
-    ("InternetOpen",     "STR_NET_OPEN",   "WinInet network open string", Severity::Medium),
 
     // Registry
     ("RegSetValueEx",    "STR_REG_WRITE",  "Registry write API string", Severity::Medium),
