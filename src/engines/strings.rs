@@ -31,6 +31,17 @@ const INDICATORS: &[(&str, &str, &str, Severity)] = &[
     ("mshta ",            "MSHTA",       "MSHTA execution (commonly abused for HTA payloads)", Severity::High),
     ("certutil -decode",  "CERTUTIL",    "Certutil used to decode payload (living-off-the-land)", Severity::High),
 
+    // Keylogger / surveillance
+    ("GetAsyncKeyState", "STR_KEYLOG",     "Keylogger API string", Severity::Medium),
+    ("SetWindowsHookEx", "STR_INPUT_HOOK", "Input hook — commonly used for keylogging", Severity::Medium),
+
+    // Network / exfiltration
+    ("InternetOpenUrl",  "STR_NET_FETCH",  "Network fetch API string", Severity::Medium),
+    ("InternetOpen",     "STR_NET_OPEN",   "WinInet network open string", Severity::Medium),
+
+    // Registry
+    ("RegSetValueEx",    "STR_REG_WRITE",  "Registry write API string", Severity::Medium),
+
     // Anti-analysis
     ("IsDebuggerPresent", "STR_ANTI_DBG",   "Anti-debugger check string", Severity::Low),
     ("VirtualBox",        "STR_VM_CHECK",   "Hypervisor name — possible VM detection", Severity::Low),
