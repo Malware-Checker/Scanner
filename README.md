@@ -1,23 +1,47 @@
 # Scanner
 
-Rust crate responsible for analysing files and detecting malware. Called by the Backend API after a file is uploaded.
+Rust library crate for static malware analysis. Called by the Backend API after a file upload. Returns a structured `ScanResult` with a verdict, cumulative threat score, and a list of findings from each engine.
 
-## Status
+## Usage
 
-Under active development. Current detection:
-- EICAR test signature (end-to-end pipeline validation)
+```rust
+use scanner::{scan, Verdict};
 
-Planned:
-- Signature-based detection (YARA rules)
-- Heuristic analysis
-- Hash lookups against threat intelligence feeds
+let result = scanner::scan(&file_bytes);
 
-## Running
-
-```bash
-cargo run
+match result.verdict {
+    Verdict::Clean     => println!("clean"),
+    Verdict::Suspicious => println!("suspicious — score {}", result.score),
+    Verdict::Malicious  => println!("malicious — score {}", result.score),
+}
 ```
 
-## Integration
+## Scoring
 
-The Backend API will call into this crate directly once the scanner logic is complete. For now detection runs inline in the API handler.
+| Severity | Score |
+|----------|-------|
+| Low      | 5     |
+| Medium   | 15    |
+| High     | 30    |
+| Critical | 100   |
+
+Score ≥ 50 or any Critical finding → `Malicious`. Score > 0 → `Suspicious`. Score = 0 → `Clean`.
+
+## Detection engines
+
+| Engine | What it detects | How |
+|--------|----------------|-----|
+| `eicar` | EICAR test file | Exact signature match (Critical) |
+| `entropy` | Packed / encrypted files | Shannon entropy > 7.0 (Medium), > 7.5 (High) |
+| `pe` | Malicious Windows binaries | Parses PE headers — 13 suspicious imports, 9 packer section names, per-section entropy |
+| `strings` | Malware techniques in any file | 25 high-signal string indicators across injection, persistence, download cradles, keylogging, anti-analysis |
+
+## Adding a new engine
+
+1. Create `src/engines/your_engine.rs` with a `pub fn run(data: &[u8]) -> Vec<Finding>` function
+2. Add `pub mod your_engine;` to `src/engines/mod.rs`
+3. Call `your_engine::run(data)` inside `scan()` in `src/lib.rs`
+
+## Dependencies
+
+- [goblin](https://github.com/m4b/goblin) — pure-Rust PE/ELF/Mach-O parser
