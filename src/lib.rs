@@ -1,44 +1,65 @@
+mod engines;
+
+use engines::{eicar, entropy, pe, strings};
+
+#[derive(Debug, PartialEq)]
 pub enum Verdict {
     Clean,
+    Suspicious,
     Malicious,
 }
 
-pub struct Finding {
-    pub engine: &'static str,
-    pub signature: &'static str,
-    pub description: &'static str,
+#[derive(Debug)]
+pub enum Severity {
+    Low,
+    Medium,
+    High,
+    Critical,
 }
 
+impl Severity {
+    fn score(&self) -> u32 {
+        match self {
+            Severity::Low => 5,
+            Severity::Medium => 15,
+            Severity::High => 30,
+            Severity::Critical => 100,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct Finding {
+    pub engine: &'static str,
+    pub signature: String,
+    pub description: String,
+    pub severity: Severity,
+}
+
+#[derive(Debug)]
 pub struct ScanResult {
     pub verdict: Verdict,
+    pub score: u32,
     pub findings: Vec<Finding>,
 }
 
 pub fn scan(data: &[u8]) -> ScanResult {
-    let engines: &[fn(&[u8]) -> Option<Finding>] = &[check_eicar];
+    let mut findings: Vec<Finding> = Vec::new();
 
-    let findings: Vec<Finding> = engines.iter().filter_map(|e| e(data)).collect();
+    findings.extend(eicar::run(data));
+    findings.extend(entropy::run(data));
+    findings.extend(pe::run(data));
+    findings.extend(strings::run(data));
 
-    let verdict = if findings.is_empty() {
-        Verdict::Clean
-    } else {
+    let score: u32 = findings.iter().map(|f| f.severity.score()).sum();
+
+    let verdict = if findings.iter().any(|f| matches!(f.severity, Severity::Critical)) || score >= 50 {
         Verdict::Malicious
+    } else if score > 0 {
+        Verdict::Suspicious
+    } else {
+        Verdict::Clean
     };
 
-    ScanResult { verdict, findings }
-}
-
-// EICAR is a standardised benign test string — all AV engines must flag it.
-// Sliding window handles files where the signature isn't at offset 0.
-fn check_eicar(data: &[u8]) -> Option<Finding> {
-    const SIG: &[u8] = b"X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
-    if data.windows(SIG.len()).any(|w| w == SIG) {
-        Some(Finding {
-            engine: "eicar",
-            signature: "EICAR-TEST-FILE",
-            description: "EICAR test signature detected",
-        })
-    } else {
-        None
-    }
+    ScanResult { verdict, score, findings }
 }

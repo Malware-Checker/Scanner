@@ -6,3 +6,6 @@ edition = "2024"
 [lib]
 name = "scanner"
 path = "src/lib.rs"
+
+[dependencies]
+goblin = { version = "0.8", default-features = false, features = ["pe32", "pe64"] }
